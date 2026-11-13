@@ -285,7 +285,9 @@ jobs:
       working-directory: sing-box-for-android
       run: |
         chmod +x gradlew
-        ./gradlew testOtherReleaseUnitTest --no-daemon
+        ./gradlew :app:testOtherDebugUnitTest --no-daemon
+      env:
+        LC_ALL: C.UTF-8
     - name: Build APK
       working-directory: sing-box-for-android
       run: |
@@ -334,3 +336,10 @@ jobs:
           sing-box-for-android/dveri.json
         prerelease: false
         generate_release_notes: true
+    - name: Upload unit test report
+      if: always()
+      uses: actions/upload-artifact@v6
+      with:
+        name: personal-unit-tests
+        path: sing-box-for-android/app/build/reports/tests/testOtherDebugUnitTest/
+        if-no-files-found: ignore
