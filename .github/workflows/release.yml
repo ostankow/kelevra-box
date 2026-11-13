@@ -281,6 +281,11 @@ jobs:
           echo "KELEVRA_BUILD=$GITHUB_RUN_NUMBER" >> "$GITHUB_ENV"
           echo "тега нет, номер сборки из прогона: $GITHUB_RUN_NUMBER"
         fi
+    - name: Unit tests for personal client
+      working-directory: sing-box-for-android
+      run: |
+        chmod +x gradlew
+        ./gradlew testOtherReleaseUnitTest --no-daemon
     - name: Build APK
       working-directory: sing-box-for-android
       run: |
