@@ -19,8 +19,8 @@ object PultYadro {
 
     /** Вшитые открытые ключи: основной (мозг) и запасной (хост kelevra). */
     val KLYUCHI_BOEVYE: List<ByteArray> = listOf(
-        Ed25519.izHex("89f9504b7dfa4bad83b8f781e8fb81225e5883739ac502804669429b1a6ab552"),
-        Ed25519.izHex("56b5e97341b4aa0828a5660faee970aecbb25291ec1e9e57505bd462f5230e90"),
+        Ed25519.izHex("9ee33d463e10e7b2039df9a9b540a50512328b87c3cf671de0ce7d458a5a8bb6"),
+        Ed25519.izHex("db3a6c24d644d54db2302c4478f86f1166b92281ea7171d0a505f925976dd0b4"),
     )
 
     /**

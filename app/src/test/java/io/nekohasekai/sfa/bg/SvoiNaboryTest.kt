@@ -65,7 +65,7 @@ class SvoiNaboryTest {
     private fun lifelineOutbounds(content: String): List<String> {
         val rules = JSONObject(content).getJSONObject("route").getJSONArray("rules")
         return (0 until rules.length()).map { rules.getJSONObject(it) }
-            .filter { r -> r.has("domain_suffix") && r.getJSONArray("domain_suffix").toString().contains("chickenkiller.com") || r.optJSONArray("ip_cidr")?.toString()?.contains("91.108.4.0/22") == true }
+            .filter { r -> r.has("domain_suffix") && r.getJSONArray("domain_suffix").toString().contains("vpn.195-10-227-82.sslip.io") || r.optJSONArray("ip_cidr")?.toString()?.contains("91.108.4.0/22") == true }
             .map { it.optString("outbound") }
     }
 
