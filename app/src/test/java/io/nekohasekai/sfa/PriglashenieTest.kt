@@ -325,7 +325,7 @@ class PriglashenieTest {
             Priglashenie.imyaProfilya("https://node2kv.example.com/u/klyuch", listOf("Kelevra"), "18.10"),
         )
         assertEquals(
-            "Kelevra · subkv",
+            "Kelevra · vpn",
             Priglashenie.imyaProfilya("https://$subkv/k/KOD", listOf("kelevra "), "18.10"),
         )
     }
@@ -349,7 +349,7 @@ class PriglashenieTest {
 
     @Test
     fun korotkoe_imya_servera_iz_lyubogo_adresa() {
-        assertEquals("subkv", Priglashenie.korotkoeImyaServera("https://$subkv/u/klyuch"))
+        assertEquals("vpn", Priglashenie.korotkoeImyaServera("https://$subkv/u/klyuch"))
         assertEquals("node2kv", Priglashenie.korotkoeImyaServera("https://node2kv.example.com:8443/k/KOD"))
         assertEquals("panel", Priglashenie.korotkoeImyaServera("https://panel.example.org/sub/abc?x=1"))
         assertEquals("10.0.0.5", Priglashenie.korotkoeImyaServera("http://10.0.0.5:2096/sub/abc"))

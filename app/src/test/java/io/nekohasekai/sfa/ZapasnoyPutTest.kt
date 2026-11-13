@@ -10,7 +10,7 @@ import java.io.EOFException
 /** Запасной путь профиля: прямой → туннель → другие двери. */
 class ZapasnoyPutTest {
     private val subkv = "vpn.195-10-227-82.sslip.io"
-    private val node2 = "vpn.195-10-227-82.sslip.io"
+    private val node2 = "fallback.example.com"
     private val url = "https://$subkv/k/ABC123"
 
     @Test
