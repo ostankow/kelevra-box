@@ -9,8 +9,8 @@ import java.io.EOFException
 
 /** Запасной путь профиля: прямой → туннель → другие двери. */
 class ZapasnoyPutTest {
-    private val subkv = "subkv.chickenkiller.com"
-    private val node2 = "node2kv.chickenkiller.com"
+    private val subkv = "vpn.195-10-227-82.sslip.io"
+    private val node2 = "vpn.195-10-227-82.sslip.io"
     private val url = "https://$subkv/k/ABC123"
 
     @Test

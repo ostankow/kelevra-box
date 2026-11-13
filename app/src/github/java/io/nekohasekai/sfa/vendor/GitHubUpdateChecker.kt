@@ -18,7 +18,7 @@ import java.io.File
 
 class GitHubUpdateChecker : Closeable {
     companion object {
-        private const val RELEASES_URL = "https://api.github.com/repos/HRYNdev/kelevra-box/releases"
+        private const val RELEASES_URL = "https://api.github.com/repos/ostankow/kelevra-box/releases"
         private const val RELEASES_PER_PAGE = 100
         // Предохранитель от бесконечного цикла, а не рабочий предел: 1000 релизов —
         // это годы при нынешнем темпе (62 релиза за месяц), а страница берётся только

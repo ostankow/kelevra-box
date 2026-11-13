@@ -7,7 +7,7 @@ import org.junit.Test
 
 class SubscriptionLinkTest {
     private val sslip = "31-77-203-26.sslip.io"
-    private val subkv = "subkv.chickenkiller.com"
+    private val subkv = "vpn.195-10-227-82.sslip.io"
 
     @Test
     fun goliy_kod_idet_na_subkv() {

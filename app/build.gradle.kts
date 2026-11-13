@@ -68,7 +68,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "dev.hryn.kelevra"
+        applicationId = "dev.ostankow.kelevra"
         minSdk = 24
         targetSdk = 35
         // Номер нашей сборки: приходит из CI (номер прогона), локально 0.

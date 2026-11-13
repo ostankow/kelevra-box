@@ -116,7 +116,7 @@
     "rule_set": [
       {
         "tag": "ads",
-        "url": "https://subkv.chickenkiller.com/rules/ads.srs",
+        "url": "https://vpn.195-10-227-82.sslip.io/rules/ads.srs",
         "type": "remote",
         "format": "binary",
         "update_interval": "1h",
@@ -126,7 +126,7 @@
       },
       {
         "tag": "main-domains",
-        "url": "https://subkv.chickenkiller.com/rules/main-domains.srs",
+        "url": "https://vpn.195-10-227-82.sslip.io/rules/main-domains.srs",
         "type": "remote",
         "format": "binary",
         "update_interval": "1h",
@@ -136,7 +136,7 @@
       },
       {
         "tag": "main-subnets",
-        "url": "https://subkv.chickenkiller.com/rules/main-subnets.srs",
+        "url": "https://vpn.195-10-227-82.sslip.io/rules/main-subnets.srs",
         "type": "remote",
         "format": "binary",
         "update_interval": "1h",
@@ -146,7 +146,7 @@
       },
       {
         "tag": "russia_inside",
-        "url": "https://subkv.chickenkiller.com/rules/community/russia_inside.srs",
+        "url": "https://vpn.195-10-227-82.sslip.io/rules/community/russia_inside.srs",
         "type": "remote",
         "format": "binary",
         "update_interval": "1d",
@@ -156,7 +156,7 @@
       },
       {
         "tag": "youtube",
-        "url": "https://subkv.chickenkiller.com/rules/community/youtube.srs",
+        "url": "https://vpn.195-10-227-82.sslip.io/rules/community/youtube.srs",
         "type": "remote",
         "format": "binary",
         "update_interval": "1d",
@@ -166,7 +166,7 @@
       },
       {
         "tag": "telegram",
-        "url": "https://subkv.chickenkiller.com/rules/community/telegram.srs",
+        "url": "https://vpn.195-10-227-82.sslip.io/rules/community/telegram.srs",
         "type": "remote",
         "format": "binary",
         "update_interval": "1d",
@@ -176,7 +176,7 @@
       },
       {
         "tag": "discord",
-        "url": "https://subkv.chickenkiller.com/rules/community/discord.srs",
+        "url": "https://vpn.195-10-227-82.sslip.io/rules/community/discord.srs",
         "type": "remote",
         "format": "binary",
         "update_interval": "1d",
@@ -186,7 +186,7 @@
       },
       {
         "tag": "meta",
-        "url": "https://subkv.chickenkiller.com/rules/community/meta.srs",
+        "url": "https://vpn.195-10-227-82.sslip.io/rules/community/meta.srs",
         "type": "remote",
         "format": "binary",
         "update_interval": "1d",
@@ -196,7 +196,7 @@
       },
       {
         "tag": "twitter",
-        "url": "https://subkv.chickenkiller.com/rules/community/twitter.srs",
+        "url": "https://vpn.195-10-227-82.sslip.io/rules/community/twitter.srs",
         "type": "remote",
         "format": "binary",
         "update_interval": "1d",
@@ -206,7 +206,7 @@
       },
       {
         "tag": "google_ai",
-        "url": "https://subkv.chickenkiller.com/rules/community/google_ai.srs",
+        "url": "https://vpn.195-10-227-82.sslip.io/rules/community/google_ai.srs",
         "type": "remote",
         "format": "binary",
         "update_interval": "1d",
@@ -216,7 +216,7 @@
       },
       {
         "tag": "google_play",
-        "url": "https://subkv.chickenkiller.com/rules/community/google_play.srs",
+        "url": "https://vpn.195-10-227-82.sslip.io/rules/community/google_play.srs",
         "type": "remote",
         "format": "binary",
         "update_interval": "1d",
@@ -226,7 +226,7 @@
       },
       {
         "tag": "cloudflare",
-        "url": "https://subkv.chickenkiller.com/rules/community/cloudflare.srs",
+        "url": "https://vpn.195-10-227-82.sslip.io/rules/community/cloudflare.srs",
         "type": "remote",
         "format": "binary",
         "update_interval": "1d",
@@ -236,7 +236,7 @@
       },
       {
         "tag": "cloudfront",
-        "url": "https://subkv.chickenkiller.com/rules/community/cloudfront.srs",
+        "url": "https://vpn.195-10-227-82.sslip.io/rules/community/cloudfront.srs",
         "type": "remote",
         "format": "binary",
         "update_interval": "1d",
@@ -246,7 +246,7 @@
       },
       {
         "tag": "digitalocean",
-        "url": "https://subkv.chickenkiller.com/rules/community/digitalocean.srs",
+        "url": "https://vpn.195-10-227-82.sslip.io/rules/community/digitalocean.srs",
         "type": "remote",
         "format": "binary",
         "update_interval": "1d",
@@ -256,7 +256,7 @@
       },
       {
         "tag": "hetzner",
-        "url": "https://subkv.chickenkiller.com/rules/community/hetzner.srs",
+        "url": "https://vpn.195-10-227-82.sslip.io/rules/community/hetzner.srs",
         "type": "remote",
         "format": "binary",
         "update_interval": "1d",
@@ -266,7 +266,7 @@
       },
       {
         "tag": "ovh",
-        "url": "https://subkv.chickenkiller.com/rules/community/ovh.srs",
+        "url": "https://vpn.195-10-227-82.sslip.io/rules/community/ovh.srs",
         "type": "remote",
         "format": "binary",
         "update_interval": "1d",
@@ -276,7 +276,7 @@
       },
       {
         "tag": "hodca",
-        "url": "https://subkv.chickenkiller.com/rules/community/hodca.srs",
+        "url": "https://vpn.195-10-227-82.sslip.io/rules/community/hodca.srs",
         "type": "remote",
         "format": "binary",
         "update_interval": "1d",
@@ -286,7 +286,7 @@
       },
       {
         "tag": "roblox",
-        "url": "https://subkv.chickenkiller.com/rules/community/roblox.srs",
+        "url": "https://vpn.195-10-227-82.sslip.io/rules/community/roblox.srs",
         "type": "remote",
         "format": "binary",
         "update_interval": "1d",
@@ -296,7 +296,7 @@
       },
       {
         "tag": "anime",
-        "url": "https://subkv.chickenkiller.com/rules/community/anime.srs",
+        "url": "https://vpn.195-10-227-82.sslip.io/rules/community/anime.srs",
         "type": "remote",
         "format": "binary",
         "update_interval": "1d",
@@ -306,7 +306,7 @@
       },
       {
         "tag": "hdrezka",
-        "url": "https://subkv.chickenkiller.com/rules/community/hdrezka.srs",
+        "url": "https://vpn.195-10-227-82.sslip.io/rules/community/hdrezka.srs",
         "type": "remote",
         "format": "binary",
         "update_interval": "1d",
@@ -316,7 +316,7 @@
       },
       {
         "tag": "tiktok",
-        "url": "https://subkv.chickenkiller.com/rules/community/tiktok.srs",
+        "url": "https://vpn.195-10-227-82.sslip.io/rules/community/tiktok.srs",
         "type": "remote",
         "format": "binary",
         "update_interval": "1d",
@@ -326,7 +326,7 @@
       },
       {
         "tag": "geoblock",
-        "url": "https://subkv.chickenkiller.com/rules/community/geoblock.srs",
+        "url": "https://vpn.195-10-227-82.sslip.io/rules/community/geoblock.srs",
         "type": "remote",
         "format": "binary",
         "update_interval": "1d",
@@ -413,12 +413,12 @@
     {
       "type": "vless",
       "tag": "Нидерланды · прямой",
-      "server": "nodekv.chickenkiller.com",
+      "server": "vpn.195-10-227-82.sslip.io",
       "server_port": 443,
       "uuid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
       "tls": {
         "enabled": true,
-        "server_name": "nodekv.chickenkiller.com",
+        "server_name": "vpn.195-10-227-82.sslip.io",
         "utls": {
           "enabled": true,
           "fingerprint": "chrome"
@@ -434,12 +434,12 @@
     {
       "type": "vless",
       "tag": "Нидерланды · запасной",
-      "server": "nodekv.chickenkiller.com",
+      "server": "vpn.195-10-227-82.sslip.io",
       "server_port": 2053,
       "uuid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
       "tls": {
         "enabled": true,
-        "server_name": "nodekv.chickenkiller.com",
+        "server_name": "vpn.195-10-227-82.sslip.io",
         "utls": {
           "enabled": true,
           "fingerprint": "chrome"
@@ -453,7 +453,7 @@
       "transport": {
         "type": "xhttp",
         "path": "/6606f3859b966acb",
-        "host": "nodekv.chickenkiller.com",
+        "host": "vpn.195-10-227-82.sslip.io",
         "mode": "stream-up",
         "x_padding_bytes": "100-1000"
       }

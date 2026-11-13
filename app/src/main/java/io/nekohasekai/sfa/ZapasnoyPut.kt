@@ -31,7 +31,7 @@ object ZapasnoyPut {
     const val LOKALNYJ_PORT = 2412
 
     /** Двери на крайний случай, если ни справочник, ни прошлые /info ещё не приезжали. */
-    internal val VSTROENNYE = listOf(SubscriptionLink.DEFAULT_HOST, "node2kv.chickenkiller.com")
+    internal val VSTROENNYE = listOf(SubscriptionLink.DEFAULT_HOST, "vpn.195-10-227-82.sslip.io")
 
     private val SBOY_TEKSTY = listOf(
         "connection reset", "reset by peer", "eof", "unexpected end of stream", "timeout", "timed out",

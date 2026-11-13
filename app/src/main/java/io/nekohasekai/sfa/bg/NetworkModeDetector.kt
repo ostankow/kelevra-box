@@ -233,7 +233,7 @@ object NetworkModeDetector {
                 // поэтому в качестве неразрешённой точки он не годится.
                 unlisted =
                     Endpoint(
-                        literals = listOf("77.239.102.44", "8.8.8.8", "9.9.9.9"),
+                        literals = listOf("195.10.227.82", "8.8.8.8", "9.9.9.9"),
                         port = 443,
                     ),
                 allowed =

@@ -7,7 +7,7 @@ package io.nekohasekai.sfa
  * раздаёт любой наш хост, поэтому хост берётся из самой ссылки, а не из константы.
  */
 object SubscriptionLink {
-    const val DEFAULT_HOST = "subkv.chickenkiller.com"
+    const val DEFAULT_HOST = "vpn.195-10-227-82.sslip.io"
 
     /** Хост (с портом, если был) и код доступа. */
     /** [kind]: 'k' (общий профиль по коду) или 'u' (профиль устройства, [code] здесь ключ). */

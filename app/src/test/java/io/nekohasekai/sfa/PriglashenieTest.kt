@@ -10,7 +10,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PriglashenieTest {
-    private val subkv = "subkv.chickenkiller.com"
+    private val subkv = "vpn.195-10-227-82.sslip.io"
 
     @Test
     fun kod_v_lyubom_registre_s_defisami_i_bez() {
@@ -32,7 +32,7 @@ class PriglashenieTest {
 
     @Test
     fun ssylki_i_musor_ne_kody() {
-        assertTrue(Priglashenie.varianty("https://subkv.chickenkiller.com/k/abc").isEmpty())
+        assertTrue(Priglashenie.varianty("https://vpn.195-10-227-82.sslip.io/k/abc").isEmpty())
         assertTrue(Priglashenie.varianty("   ").isEmpty())
         assertTrue(Priglashenie.varianty("abc/../x").isEmpty())
     }
@@ -60,7 +60,7 @@ class PriglashenieTest {
     fun spisok_dverej() {
         val spisok = Priglashenie.spisokDverej(
             subkv,
-            Priglashenie.razobratSpravochnik("""{"dveri": ["Host1.example.com", "subkv.chickenkiller.com", "bad host", ""]}"""),
+            Priglashenie.razobratSpravochnik("""{"dveri": ["Host1.example.com", "vpn.195-10-227-82.sslip.io", "bad host", ""]}"""),
             listOf("host2.example.com:8443", "host1.example.com"),
         )
         assertEquals(listOf(subkv, "host1.example.com", "host2.example.com:8443"), spisok)

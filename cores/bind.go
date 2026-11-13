@@ -15,6 +15,5 @@ import (
 	// (cmd/internal/build_libbox/main.go).
 	_ "github.com/sagernet/gomobile"
 
-	_ "github.com/openlibrecommunity/olcrtc/mobile"
 	_ "github.com/sagernet/sing-box/experimental/libbox"
 )

@@ -1,537 +1,331 @@
 name: release
-
-# Тег вида v1.14.0-kelevra27 -> сборка + релиз с APK.
-#
-# Ядро релиза — ОБЪЕДИНЁННОЕ: sing-box (с нашим xhttp) + olcrtc в одном .aar.
-# Способ сборки ровно тот же, что в build-olcrtc.yml: один Go-модуль cores/, одна
-# команда gomobile bind на два пакета. Собирать двумя отдельными .aar нельзя —
-# в APK окажутся два Go-рантайма и дублирующиеся классы go.*.
-#
-# Ручной запуск (workflow_dispatch) прогоняет весь конвейер БЕЗ публикации:
-# шаг публикации срабатывает только на пуш тега.
-on:
+'on':
   push:
     tags:
-      - "v*"
-  # Прогрев кеша ядра вызывает warm-core.yml (пуш в dev с правкой ядра). Триггер вынесен
-  # в отдельный файл специально: paths рядом с tags в одном on.push — единственное место,
-  # где поведение GitHub не подтверждено документацией, а ценой ошибки был бы тег, который
-  # вообще не собирает релиз. Job release при вызове не запускается — см. его if.
+    - v*
   workflow_call:
     inputs:
       core_only:
-        description: "Только прогрев ядра: APK не собирать"
+        description: 'Только прогрев ядра: APK не собирать'
         type: boolean
         required: false
         default: false
   workflow_dispatch:
     inputs:
       core_ref:
-        description: "Тег/ветка ядра sing-box"
+        description: Тег/ветка ядра sing-box
         required: false
-        default: "v1.14.1"
-      olcrtc_ref:
-        description: "Ветка/тег/SHA olcrtc (в НАШЕМ форке)"
-        required: false
-        default: "kelevra"
+        default: v1.14.1
       kelevra_build:
-        description: "Номер сборки для проверочного APK без тега (пусто — номер прогона)"
+        description: Номер сборки для проверочного APK без тега (пусто — номер прогона)
         required: false
-        default: ""
-
+        default: ''
 env:
-  NDK_VERSION: "28.0.13004108"
-  CORE_REPO: "SagerNet/sing-box"
+  NDK_VERSION: 28.0.13004108
+  CORE_REPO: SagerNet/sing-box
   CORE_REF: ${{ github.event.inputs.core_ref || 'v1.14.1' }}
-  # Свой форк, а не апстрим: наши правки лежат в нём коммитами на ветке kelevra
-  # (база 3339cd36 = апстрим от 11.08, из него собраны релизы kelevra90/92/93 в бою).
-  # Чужой master уронил ночной прогрев 14.08,
-  # переписав протокол; из форка апстрим до сборки не дотягивается вообще.
-  OLCRTC_REPO: "HRYNdev/olcrtc"
-  OLCRTC_REF: ${{ github.event.inputs.olcrtc_ref || 'kelevra' }}
-
 jobs:
-  # Ядро для обоих флейворов приложения: other -> libbox.aar, otherLegacy -> libbox-legacy.aar.
-  # Различия между вариантами ровно те же, что у апстрима в cmd/internal/build_libbox/main.go
-  # (v1.14.1): -androidapi и набор тегов без with_naive_outbound.
   core:
     runs-on: ubuntu-latest
     strategy:
-      # legacy не должен ронять основную сборку: релизный APK собирается из флейвора other
-      # и legacy-ядро ему не нужно. Проверка наличия libbox.aar стоит ниже, в job release.
       fail-fast: false
       matrix:
         include:
-          - variant: main
-            androidapi: 24
-            aar: libbox.aar
-            artifact: core-libbox
-            extra_tags: ",with_naive_outbound"
-          - variant: legacy
-            androidapi: 21
-            aar: libbox-legacy.aar
-            artifact: core-libbox-legacy
-            extra_tags: ""
+        - variant: main
+          androidapi: 24
+          aar: libbox.aar
+          artifact: core-libbox
+          extra_tags: ',with_naive_outbound'
+        - variant: legacy
+          androidapi: 21
+          aar: libbox-legacy.aar
+          artifact: core-libbox-legacy
+          extra_tags: ''
     name: core (${{ matrix.variant }})
     steps:
-      - name: Checkout app
-        uses: actions/checkout@v5
-        with:
-          path: sing-box-for-android
-          submodules: recursive
+    - name: Checkout app
+      uses: actions/checkout@v5
+      with:
+        path: sing-box-for-android
+        submodules: recursive
+    - name: Кеш ядра
+      id: core-cache
+      uses: actions/cache/restore@v5
+      with:
+        path: sing-box-for-android/app/libs/${{ matrix.aar }}
+        key: libbox-own-xhttp-v1-${{ matrix.variant }}-${{ env.CORE_REF }}-${{ hashFiles('sing-box-for-android/cores/go.mod', 'sing-box-for-android/core-xhttp/**') }}
+    - name: Checkout sing-box core
+      if: steps.core-cache.outputs.cache-hit != 'true'
+      uses: actions/checkout@v5
+      with:
+        repository: ${{ env.CORE_REPO }}
+        ref: ${{ env.CORE_REF }}
+        path: sing-box
+        fetch-depth: 0
+    - name: Setup Go
+      if: steps.core-cache.outputs.cache-hit != 'true'
+      uses: actions/setup-go@v6
+      with:
+        go-version-file: sing-box/go.mod
+        cache: false
+    - name: Кеш Go-модулей
+      id: gomod-cache
+      if: steps.core-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/restore@v5
+      with:
+        path: |
+          ~/go/pkg/mod
+          ~/.cache/go-build
+        key: gomod-own-xhttp-${{ matrix.variant }}-${{ env.CORE_REF }}-${{ hashFiles('sing-box-for-android/cores/go.mod') }}
+        restore-keys: |
+          gomod-own-xhttp-${{ matrix.variant }}-${{ env.CORE_REF }}-
+          gomod-own-xhttp-${{ matrix.variant }}-
+          gomod-own-xhttp-
+    - name: Setup JDK
+      if: steps.core-cache.outputs.cache-hit != 'true'
+      uses: actions/setup-java@v6
+      with:
+        distribution: temurin
+        java-version: '17'
+    - name: Кеш Gradle
+      if: steps.core-cache.outputs.cache-hit != 'true'
+      uses: actions/cache@v5
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*') }}
+        restore-keys: |
+          gradle-${{ runner.os }}-
+    - name: Setup Android SDK
+      if: steps.core-cache.outputs.cache-hit != 'true'
+      uses: android-actions/setup-android@v4
+      with:
+        packages: platform-tools
+    - name: Install NDK
+      if: steps.core-cache.outputs.cache-hit != 'true'
+      run: |
+        sdkmanager --install "ndk;$NDK_VERSION"
+    - name: Патч ядра (xhttp)
+      if: steps.core-cache.outputs.cache-hit != 'true'
+      run: |
+        python3 sing-box-for-android/core-xhttp/apply.py sing-box
+    - name: Install gomobile
+      if: steps.core-cache.outputs.cache-hit != 'true'
+      working-directory: sing-box
+      run: |
+        make lib_install
+    - name: Подготовка модуля cores
+      if: steps.core-cache.outputs.cache-hit != 'true'
+      working-directory: sing-box-for-android/cores
+      run: |
+        go mod edit -replace=github.com/sagernet/sing-box="$GITHUB_WORKSPACE/sing-box"
+        go mod tidy
+    - name: Создать app/libs
+      run: |
+        mkdir -p sing-box-for-android/app/libs
+    - name: Build объединённое ядро
+      if: steps.core-cache.outputs.cache-hit != 'true'
+      working-directory: sing-box-for-android/cores
+      run: |
+        export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/$NDK_VERSION"
+        export ANDROID_NDK_ROOT="$ANDROID_NDK_HOME"
+        export PATH="$PATH:$(go env GOPATH)/bin"
 
-      # olcrtc берётся из НАШЕГО форка, но ветка kelevra тоже двигается (когда мы сами
-      # правим патч или подтягиваем апстрим), а в ключе кеша стояло бы её имя, а не
-      # содержимое: при попадании релиз молча собрался бы из ядра, снятого с прошлого
-      # состояния ветки. Поэтому в ключ идёт SHA; ls-remote стоит полсекунды и клона
-      # не требует.
-      - name: SHA olcrtc
-        id: olcrtc-sha
-        run: |
-          SHA=$(git ls-remote "https://github.com/$OLCRTC_REPO" "$OLCRTC_REF" | cut -f1 | head -1)
-          # ref может быть уже полным SHA коммита: ls-remote отдаёт только имена ссылок
-          # и на такой ref молчит. Это не ошибка — берём его как есть.
-          if [ -z "$SHA" ] && printf '%s' "$OLCRTC_REF" | grep -Eq '^[0-9a-f]{40}$'; then
-            SHA="$OLCRTC_REF"
-          fi
-          test -n "$SHA" || { echo "не удалось узнать SHA olcrtc для ref '$OLCRTC_REF'"; exit 1; }
-          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
-          echo "olcrtc $OLCRTC_REF = $SHA"
+        # версия ядра ровно как её считает build_shared.ReadTag (тег без ведущей v)
+        VERSION=$(cd "$GITHUB_WORKSPACE/sing-box" && git describe --tags | sed 's/^v//')
+        echo "версия ядра: $VERSION"
 
-      # Ключ сменён относительно libbox-xhttp2-*: под старым ключом лежит ядро БЕЗ olcrtc,
-      # и попадание в него молча выпустило бы релиз без комнаты. При правке cores/go.mod
-      # или патча xhttp ключ меняется сам (hashFiles).
-      # ЧИТАЕМ здесь, а ПИШЕМ ниже и только не с тега (шаг «Сохранить кеш ядра»).
-      # Кеш, записанный на теге, не виден ни одному другому тегу — его не прочитает никто,
-      # а место в общем хранилище он занимает. Замерено 13.08.2026 по actions/caches:
-      # 34 таких кеша, 4.47 ГБ, у ВСЕХ время последнего чтения равно времени записи
-      # (разница 0 с) — ноль чтений на 34 записи. Хранилище репозитория при этом
-      # 10.63 ГБ при лимите 10 ГБ, то есть GitHub уже вытесняет по LRU, и вытесняет он
-      # в том числе ядро на dev — ровно то, ради чего заведён warm-core.
-      - name: Кеш ядра
-        id: core-cache
-        uses: actions/cache/restore@v5
-        with:
-          path: sing-box-for-android/app/libs/${{ matrix.aar }}
-          # core-olcrtc/** из хеша убран 14.08: с переходом на форк apply.py в сборке не
-          # запускается, содержимое этой папки на ядро больше не влияет — а её README тянул
-          # за собой 9 минут пересборки на каждую правку текста (поймано в тот же день).
-          # Правки самого olcrtc теперь меняют ключ через SHA ветки форка, что и правильно.
-          key: libbox-olcrtc-v3-${{ matrix.variant }}-${{ env.CORE_REF }}-${{ steps.olcrtc-sha.outputs.sha }}-${{ hashFiles('sing-box-for-android/cores/go.mod', 'sing-box-for-android/core-xhttp/**') }}
+        # теги 1:1 из cmd/internal/build_libbox/main.go (sharedTags) ПЛЮС http2legacy;
+        # http2legacy наш, апстриму он не нужен: начиная с golang.org/x/net v0.57.0
+        # (тянется ядром v1.14.1) старая реализация http2/transport.go собирается
+        # только под `//go:build !(go1.27 && !http2legacy)`. Наш //go:linkname на
+        # http2.(*Transport).connPool в core-xhttp/v2rayxhttp/dialer.go держит
+        # DefaultDialerClient.Close() — принудительное закрытие ВСЕХ, а не только
+        # простаивающих, HTTP/2-соединений xhttp, когда соединение xmux выбыло и на нём не
+        # осталось сессий (ошибка одного запроса его больше не рвёт); публичного API
+        # для этого нет. Без тега на toolchain 1.27 линковка падает:
+        # relocation target golang.org/x/net/http2.(*Transport).connPool not defined
+        # (замерено 16.09.2026 на go1.27.0: без тега RC=1, с тегом RC=0). На Go 1.26,
+        # который ставится сейчас, тег ничего не меняет. Снимать — только вместе с linkname.
+        # with_naive_outbound
+        # приезжает из матрицы: у legacy апстрим его выкидывает (filterTags).
+        TAGS="with_gvisor,with_quic,with_wireguard,with_utls,with_clash_api,with_usbip,with_openvpn,with_openconnect,badlinkname,tfogo_checklinkname0,http2legacy,with_tailscale,ts_omit_logtail,ts_omit_ssh,ts_omit_drive,ts_omit_taildrop,ts_omit_webclient,ts_omit_doctor,ts_omit_capture,ts_omit_kube,ts_omit_aws,ts_omit_synology,ts_omit_bird${{ matrix.extra_tags }}"
+        LDFLAGS="-X github.com/sagernet/sing-box/constant.Version=$VERSION -X runtime.godebugDefault=multipathtcp=0,tlssha1=1,tlsunsafeekm=1 -checklinkname=0 -s -w -buildid="
 
-      - name: Checkout sing-box core
-        if: steps.core-cache.outputs.cache-hit != 'true'
-        uses: actions/checkout@v5
-        with:
-          repository: ${{ env.CORE_REPO }}
-          ref: ${{ env.CORE_REF }}
-          path: sing-box
-          fetch-depth: 0 # нужны теги: версия ядра берётся из git describe
-
-      - name: Checkout olcrtc
-        if: steps.core-cache.outputs.cache-hit != 'true'
-        uses: actions/checkout@v5
-        with:
-          repository: ${{ env.OLCRTC_REPO }}
-          ref: ${{ env.OLCRTC_REF }}
-          path: olcrtc
-
-      # Без правок datachannel через WbStream не поднимается вообще: ответ сервера
-      # на рукопожатие теряется, потому что участник LiveKit начинает получать данные
-      # не сразу после входа в комнату. Разбор и замеры → core-olcrtc/README.md.
-      #
-      # Раньше правки накладывались здесь скриптом core-olcrtc/apply.py на чужой репозиторий.
-      # Так делать перестали 14.08: апстрим переписал протокол (ProtoVersion 1->3,
-      # challenge/response, PR #140), текстовые замены перестали находить свои места, и
-      # ночной прогрев упал в 00:59 без единой правки с нашей стороны. Теперь правки живут
-      # коммитами в HRYNdev/olcrtc (ветка kelevra), а apply.py остаётся только как источник
-      # этих правок и разбор причины.
-      #
-      # Проверка ниже сохранена: она ловит случай, когда в ветку форка приехало что-то, где
-      # наших правок нет (например неаккуратный мердж апстрима). Ядро без datachannel в
-      # релиз молча не уедет.
-      - name: Проверка правок olcrtc (рабочий datachannel)
-        if: steps.core-cache.outputs.cache-hit != 'true'
-        run: |
-          grep -q 'isBroadcastOnlyTransport' olcrtc/internal/client/client.go || { echo "в ветке '$OLCRTC_REF' форка $OLCRTC_REPO нет наших правок datachannel"; exit 1; }
-
-      # olcrtc требует go 1.26.3, sing-box 1.24.7 — берём версию из olcrtc
-      - name: Setup Go
-        if: steps.core-cache.outputs.cache-hit != 'true'
-        uses: actions/setup-go@v6
-        with:
-          go-version-file: olcrtc/go.mod
-          cache: false
-
-      # ЧИТАЕМ здесь, а ПИШЕМ ниже и только не с тега (шаг «Сохранить кеш Go-модулей») —
-      # ровно как у «Кеш ядра» выше. Защиту от кеша-сироты на теге завели 13.08.2026, но
-      # на ЭТОТ шаг её не распространили, и он продолжал писать. Замерено 16.09.2026:
-      # gomod-olcrtc-main-… 2.57 ГБ на ref refs/tags/v1.14.0-kelevra118, время последнего
-      # чтения равно времени записи секунда в секунду — ноль чтений. Прочитать его не может
-      # никто: область видимости кеша — свой ref, base PR или дефолтная ветка (dev), а теги
-      # не переиспользуются (15 релизов — 15 разных тегов). Хранилище репозитория при этом
-      # 11.57 ГБ при лимите 10 ГБ, то есть GitHub уже вытесняет по LRU живые кеши dev.
-      - name: Кеш Go-модулей
-        id: gomod-cache
-        if: steps.core-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/restore@v5
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-          key: gomod-olcrtc-${{ matrix.variant }}-${{ env.CORE_REF }}-${{ env.OLCRTC_REF }}-${{ hashFiles('sing-box-for-android/cores/go.mod') }}
-          restore-keys: |
-            gomod-olcrtc-${{ matrix.variant }}-${{ env.CORE_REF }}-${{ env.OLCRTC_REF }}-
-            gomod-olcrtc-${{ matrix.variant }}-
-            gomod-olcrtc-
-
-      - name: Setup JDK
-        if: steps.core-cache.outputs.cache-hit != 'true'
-        uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: "17" # gomobile/gobind в апстриме проверяют 17; держим ту же связку
-
-      # Свой кеш Gradle вместо cache: gradle у setup-java: у того нет restore-keys, а ключ —
-      # хеш всех gradle-файлов, поэтому любая правка build.gradle.kts убивает попадания насовсем.
-      - name: Кеш Gradle
-        if: steps.core-cache.outputs.cache-hit != 'true'
-        uses: actions/cache@v5
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*') }}
-          restore-keys: |
-            gradle-${{ runner.os }}-
-
-      - name: Setup Android SDK
-        if: steps.core-cache.outputs.cache-hit != 'true'
-        uses: android-actions/setup-android@v4
-        with:
-          # пакет 'tools' снят из SDK-репозитория Google, дефолт action на нём падает
-          packages: 'platform-tools'
-
-      - name: Install NDK
-        if: steps.core-cache.outputs.cache-hit != 'true'
-        run: sdkmanager --install "ndk;$NDK_VERSION"
-
-      # наш транспорт xhttp: в апстриме его нет
-      - name: Патч ядра (xhttp)
-        if: steps.core-cache.outputs.cache-hit != 'true'
-        run: python3 sing-box-for-android/core-xhttp/apply.py sing-box
-
-      - name: Install gomobile
-        if: steps.core-cache.outputs.cache-hit != 'true'
-        working-directory: sing-box
-        run: make lib_install
-
-      # replace на локальные чекауты: абсолютными путями, чтобы не зависеть от раскладки
-      - name: Подготовка модуля cores
-        if: steps.core-cache.outputs.cache-hit != 'true'
-        working-directory: sing-box-for-android/cores
-        run: |
-          go mod edit -replace=github.com/sagernet/sing-box="$GITHUB_WORKSPACE/sing-box"
-          go mod edit -replace=github.com/openlibrecommunity/olcrtc="$GITHUB_WORKSPACE/olcrtc"
-          go mod tidy
-
-      - name: Создать app/libs
-        run: mkdir -p sing-box-for-android/app/libs
-
-      - name: Build объединённое ядро
-        if: steps.core-cache.outputs.cache-hit != 'true'
-        working-directory: sing-box-for-android/cores
-        run: |
-          export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/$NDK_VERSION"
-          export ANDROID_NDK_ROOT="$ANDROID_NDK_HOME"
-          export PATH="$PATH:$(go env GOPATH)/bin"
-
-          # версия ядра ровно как её считает build_shared.ReadTag (тег без ведущей v)
-          VERSION=$(cd "$GITHUB_WORKSPACE/sing-box" && git describe --tags | sed 's/^v//')
-          echo "версия ядра: $VERSION"
-
-          # теги 1:1 из cmd/internal/build_libbox/main.go (sharedTags) ПЛЮС http2legacy;
-          # http2legacy наш, апстриму он не нужен: начиная с golang.org/x/net v0.57.0
-          # (тянется ядром v1.14.1) старая реализация http2/transport.go собирается
-          # только под `//go:build !(go1.27 && !http2legacy)`. Наш //go:linkname на
-          # http2.(*Transport).connPool в core-xhttp/v2rayxhttp/dialer.go держит
-          # DefaultDialerClient.Close() — принудительное закрытие ВСЕХ, а не только
-          # простаивающих, HTTP/2-соединений xhttp, когда соединение xmux выбыло и на нём не
-          # осталось сессий (ошибка одного запроса его больше не рвёт); публичного API
-          # для этого нет. Без тега на toolchain 1.27 линковка падает:
-          # relocation target golang.org/x/net/http2.(*Transport).connPool not defined
-          # (замерено 16.09.2026 на go1.27.0: без тега RC=1, с тегом RC=0). На Go 1.26,
-          # который ставится сейчас, тег ничего не меняет. Снимать — только вместе с linkname.
-          # with_naive_outbound
-          # приезжает из матрицы: у legacy апстрим его выкидывает (filterTags).
-          TAGS="with_gvisor,with_quic,with_wireguard,with_utls,with_clash_api,with_usbip,with_openvpn,with_openconnect,badlinkname,tfogo_checklinkname0,http2legacy,with_tailscale,ts_omit_logtail,ts_omit_ssh,ts_omit_drive,ts_omit_taildrop,ts_omit_webclient,ts_omit_doctor,ts_omit_capture,ts_omit_kube,ts_omit_aws,ts_omit_synology,ts_omit_bird${{ matrix.extra_tags }}"
-          LDFLAGS="-X github.com/sagernet/sing-box/constant.Version=$VERSION -X runtime.godebugDefault=multipathtcp=0,tlssha1=1,tlsunsafeekm=1 -checklinkname=0 -s -w -buildid="
-
-          # релиз собирает все ABI: сплиты APK делаются на armeabi-v7a/arm64-v8a/x86/x86_64
-          gomobile bind -v \
-            -o "../app/libs/${{ matrix.aar }}" \
-            -target android \
-            -androidapi ${{ matrix.androidapi }} \
-            -javapkg=io.nekohasekai \
-            -libname=box \
-            -trimpath \
-            -buildvcs=false \
-            -ldflags "$LDFLAGS" \
-            -tags "$TAGS" \
-            github.com/sagernet/sing-box/experimental/libbox \
-            github.com/openlibrecommunity/olcrtc/mobile
-
-      # проверка идёт и при попадании в кеш: кеш тоже может оказаться не тем
-      - name: Проверка содержимого .aar
-        working-directory: sing-box-for-android
-        run: |
-          AAR=app/libs/${{ matrix.aar }}
-          test -f "$AAR" || { echo "ОШИБКА: .aar не собран"; exit 1; }
-          ls -la app/libs/
-          SO_NAMES=$(unzip -l "$AAR" | grep -oE '[^/ ]+\.so$' | sort -u)
-          echo "уникальные имена .so: $SO_NAMES"
-          test "$(echo "$SO_NAMES" | wc -l)" -eq 1 || { echo "ОШИБКА: в .aar больше одной нативной библиотеки"; exit 1; }
-          mkdir -p /tmp/aar && unzip -o -q "$AAR" classes.jar -d /tmp/aar
-          unzip -l /tmp/aar/classes.jar > /tmp/classes.txt
-          LIBBOX=$(grep -cE 'io/nekohasekai/libbox/.*\.class' /tmp/classes.txt || true)
-          OLCRTC=$(grep -cE 'io/nekohasekai/mobile/.*\.class' /tmp/classes.txt || true)
-          echo "классов libbox: $LIBBOX, классов olcrtc/mobile: $OLCRTC"
-          test "$LIBBOX" -gt 0 || { echo "ОШИБКА: нет классов sing-box"; exit 1; }
-          test "$OLCRTC" -gt 0 || { echo "ОШИБКА: нет классов olcrtc"; exit 1; }
-
-      - name: Проверка что транспорт xhttp внутри
-        working-directory: sing-box-for-android
-        run: |
-          mkdir -p /tmp/socheck && unzip -o -q "app/libs/${{ matrix.aar }}" 'jni/*/*.so' -d /tmp/socheck
-          SO=$(find /tmp/socheck -name '*.so' | head -1)
-          grep -qa 'v2rayxhttp' "$SO" && echo "транспорт xhttp внутри ядра: есть" || { echo "ОШИБКА: ядро собрано без патча xhttp"; exit 1; }
-
-      # Пишем кеш только с ветки и только если его ещё нет. Стоит здесь, а не рядом с
-      # чтением, намеренно: выше ядро уже проверено на olcrtc и на xhttp, поэтому в кеш
-      # ложится проверенное ядро, а не любое собранное.
-      # Тег теперь кеш только читает — с dev он виден, это дефолтная ветка.
-      - name: Сохранить кеш ядра
-        if: steps.core-cache.outputs.cache-hit != 'true' && !startsWith(github.ref, 'refs/tags/')
-        uses: actions/cache/save@v5
-        with:
-          path: sing-box-for-android/app/libs/${{ matrix.aar }}
-          key: ${{ steps.core-cache.outputs.cache-primary-key }}
-
-      # Парный шаг к «Кеш Go-модулей»: пишем только с ветки и только если точного попадания
-      # не было (иначе GitHub откажет — ключ уже занят). На теге не пишем никогда.
-      - name: Сохранить кеш Go-модулей
-        if: steps.core-cache.outputs.cache-hit != 'true' && steps.gomod-cache.outputs.cache-hit != 'true' && !startsWith(github.ref, 'refs/tags/')
-        uses: actions/cache/save@v5
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-          key: ${{ steps.gomod-cache.outputs.cache-primary-key }}
-
-      - name: Upload core
-        uses: actions/upload-artifact@v6
-        with:
-          name: ${{ matrix.artifact }}
-          path: sing-box-for-android/app/libs/${{ matrix.aar }}
-          if-no-files-found: error
-
+        # релиз собирает все ABI: сплиты APK делаются на armeabi-v7a/arm64-v8a/x86/x86_64
+        gomobile bind -v \
+          -o "../app/libs/${{ matrix.aar }}" \
+          -target android \
+          -androidapi ${{ matrix.androidapi }} \
+          -javapkg=io.nekohasekai \
+          -libname=box \
+          -trimpath \
+          -buildvcs=false \
+          -ldflags "$LDFLAGS" \
+          -tags "$TAGS" \
+          github.com/sagernet/sing-box/experimental/libbox
+    - name: Проверка содержимого .aar
+      working-directory: sing-box-for-android
+      run: |
+        AAR=app/libs/${{ matrix.aar }}
+        test -f "$AAR" || { echo "ОШИБКА: .aar не собран"; exit 1; }
+        ls -la app/libs/
+        SO_NAMES=$(unzip -l "$AAR" | grep -oE '[^/ ]+\.so$' | sort -u)
+        echo "уникальные имена .so: $SO_NAMES"
+        test "$(echo "$SO_NAMES" | wc -l)" -eq 1 || { echo "ОШИБКА: в .aar больше одной нативной библиотеки"; exit 1; }
+        mkdir -p /tmp/aar && unzip -o -q "$AAR" classes.jar -d /tmp/aar
+        unzip -l /tmp/aar/classes.jar > /tmp/classes.txt
+        LIBBOX=$(grep -cE 'io/nekohasekai/libbox/.*\.class' /tmp/classes.txt || true)
+        test "$LIBBOX" -gt 0 || { echo "ОШИБКА: нет классов sing-box"; exit 1; }
+    - name: Проверка что транспорт xhttp внутри
+      working-directory: sing-box-for-android
+      run: |
+        mkdir -p /tmp/socheck && unzip -o -q "app/libs/${{ matrix.aar }}" 'jni/*/*.so' -d /tmp/socheck
+        SO=$(find /tmp/socheck -name '*.so' | head -1)
+        grep -qa 'v2rayxhttp' "$SO" && echo "транспорт xhttp внутри ядра: есть" || { echo "ОШИБКА: ядро собрано без патча xhttp"; exit 1; }
+    - name: Сохранить кеш ядра
+      if: steps.core-cache.outputs.cache-hit != 'true' && !startsWith(github.ref, 'refs/tags/')
+      uses: actions/cache/save@v5
+      with:
+        path: sing-box-for-android/app/libs/${{ matrix.aar }}
+        key: ${{ steps.core-cache.outputs.cache-primary-key }}
+    - name: Сохранить кеш Go-модулей
+      if: steps.core-cache.outputs.cache-hit != 'true' && steps.gomod-cache.outputs.cache-hit != 'true' && !startsWith(github.ref, 'refs/tags/')
+      uses: actions/cache/save@v5
+      with:
+        path: |
+          ~/go/pkg/mod
+          ~/.cache/go-build
+        key: ${{ steps.gomod-cache.outputs.cache-primary-key }}
+    - name: Upload core
+      uses: actions/upload-artifact@v6
+      with:
+        name: ${{ matrix.artifact }}
+        path: sing-box-for-android/app/libs/${{ matrix.aar }}
+        if-no-files-found: error
   release:
     needs: core
-    # legacy-ядро может не собраться (API 21 старше того, что ждёт olcrtc) — это не повод
-    # отменять релиз. Отсутствие основного ядра ловится ниже проверкой libbox.aar.
-    # Пуш в dev — это прогрев кеша ядра, APK там собирать незачем.
-    # `core_only` пришёл из warm-core: при РУЧНОМ прогреве event_name здесь тоже
-    # `workflow_dispatch`, и без этого флага job стартовал и падал на пустых секретах
-    # подписи (секреты в вызванный сценарий не наследуются). Поймано 13.08.2026.
     if: ${{ !cancelled() && !inputs.core_only && (github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')) }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - name: Checkout app
-        uses: actions/checkout@v5
-        with:
-          path: sing-box-for-android
-          submodules: recursive
-
-      - name: Setup JDK
-        uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: "17"
-
-      # см. комментарий у такого же шага в job core
-      - name: Кеш Gradle
-        uses: actions/cache@v5
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*') }}
-          restore-keys: |
-            gradle-${{ runner.os }}-
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v4
-        with:
-          # пакет 'tools' снят из SDK-репозитория Google, дефолт action на нём падает
-          packages: 'platform-tools'
-
-      - name: Забрать ядро из job core
-        uses: actions/download-artifact@v7
-        with:
-          pattern: core-libbox*
-          merge-multiple: true
-          path: sing-box-for-android/app/libs
-
-      - name: Проверка что ядро на месте
-        run: |
-          ls -la sing-box-for-android/app/libs/
-          test -f sing-box-for-android/app/libs/libbox.aar || { echo "ОШИБКА: ядро не собралось"; exit 1; }
-
-      - name: Подготовка подписи
-        working-directory: sing-box-for-android
-        env:
-          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
-          KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-        run: |
-          echo "$KEYSTORE_B64" | base64 -d > app/release.keystore
-          printf 'KEYSTORE_PASS=%s\nALIAS_NAME=%s\nALIAS_PASS=%s\n' "$KEYSTORE_PASS" "$KEY_ALIAS" "$KEYSTORE_PASS" > /tmp/local.properties
-          echo "LOCAL_PROPERTIES=$(base64 -w0 /tmp/local.properties)" >> $GITHUB_ENV
-          rm -f /tmp/local.properties
-          test -s app/release.keystore
-
-      - name: Номер сборки — из тега, а не из номера прогона
-        env:
-          KELEVRA_BUILD_INPUT: ${{ github.event.inputs.kelevra_build }}
-        run: |
-          set -e
-          # Проверочная сборка без тега ставится поверх установленной версии только с
-          # номером выше её, а номер прогона ниже номеров выпусков. Поэтому при ручном
-          # запуске номер можно задать явно; на выпуск по тегу это не влияет.
-          if [ "$GITHUB_REF_TYPE" != "tag" ] && printf '%s' "$KELEVRA_BUILD_INPUT" | grep -Eq '^[0-9]+$'; then
-            echo "KELEVRA_BUILD=$KELEVRA_BUILD_INPUT" >> "$GITHUB_ENV"
-            echo "номер сборки задан при запуске: $KELEVRA_BUILD_INPUT"
-            exit 0
-          fi
-          # Номер прогона живёт своей жизнью (перезапуски, отменённые сборки, прогоны
-          # других веток), и 10.08.2026 тег kelevra58 выпустил версию 1.14.54: имя тега
-          # и версия разъехались, а телефон с более высоким номером обновление с сервера
-          # уже не принимал. Берём номер из имени тега; без тега остаётся прогон.
-          n="${GITHUB_REF_NAME#v1.14.0-kelevra}"
-          if [ "$GITHUB_REF_TYPE" = "tag" ] && [ "$n" != "$GITHUB_REF_NAME" ] && [ -n "$n" ]; then
-            echo "KELEVRA_BUILD=$n" >> "$GITHUB_ENV"
-            echo "номер сборки из тега: $n"
-          else
-            echo "KELEVRA_BUILD=$GITHUB_RUN_NUMBER" >> "$GITHUB_ENV"
-            echo "тега нет, номер сборки из прогона: $GITHUB_RUN_NUMBER"
-          fi
-
-      # Носители комнаты «Телемост» и «WB Chat»: клиент OpenFlux живёт в APK отдельным исполняемым
-      # libopenflux.so (в git не лежит). Без этого шага релиз соберётся молча без Телемоста,
-      # и сервер, выдав носитель telemost, получит «в этой сборке комнаты нет».
-      # Публикуется только arm64 APK — собираем ровно его ABI.
-      - name: Setup Go (OpenFlux)
-        uses: actions/setup-go@v6
-        with:
-          go-version: "1.26.7"
-          cache: false
-
-      - name: Install NDK (OpenFlux)
-        run: sdkmanager --install "ndk;$NDK_VERSION"
-
-      - name: Build OpenFlux
-        working-directory: sing-box-for-android
-        env:
-          # Форк с носителем WB Chat приватный: ключ только на чтение к одному репозиторию.
-          OPENFLUX_WBCHAT_DEPLOY_KEY: ${{ secrets.OPENFLUX_WBCHAT_DEPLOY_KEY }}
-        run: |
-          test -n "$OPENFLUX_WBCHAT_DEPLOY_KEY" || { echo "нет секрета OPENFLUX_WBCHAT_DEPLOY_KEY"; exit 1; }
-          mkdir -p ~/.ssh && chmod 700 ~/.ssh
-          printf '%s\n' "$OPENFLUX_WBCHAT_DEPLOY_KEY" > ~/.ssh/openflux_wbchat && chmod 600 ~/.ssh/openflux_wbchat
-          ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null
-          export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/openflux_wbchat -o IdentitiesOnly=yes"
-          export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/$NDK_VERSION"
-          ABIS="arm64-v8a" bash core-openflux/sobrat.sh
-          test -s app/src/main/jniLibs/arm64-v8a/libopenflux.so
-
-      - name: Build APK
-        working-directory: sing-box-for-android
-        run: |
-          chmod +x gradlew
-          ./gradlew assembleOtherRelease --no-daemon
-
-      # без этой проверки в релиз once уже уехало ядро без нашего транспорта
-      - name: Проверка что транспорт в APK
-        working-directory: sing-box-for-android
-        run: |
-          APK=$(find app/build/outputs/apk -name '*arm64*.apk' | head -1)
-          test -n "$APK" || { echo "APK не найден"; exit 1; }
-          mkdir -p /tmp/apkcheck && unzip -o -q "$APK" 'lib/*/libbox.so' -d /tmp/apkcheck
-          SO=$(find /tmp/apkcheck -name libbox.so | head -1)
-          if grep -qa 'v2rayxhttp' "$SO"; then
-            echo "транспорт xhttp внутри APK: есть"
-          else
-            echo "ОШИБКА: в libbox.so нет транспорта xhttp — ядро собрано без патча"
-            exit 1
-          fi
-
-      # то же самое для комнаты: ядро olcrtc живёт в том же .so, а его Java-обёртка
-      # (io.nekohasekai.mobile.*) вызывается рефлексией — без этой проверки релиз без
-      # комнаты собрался бы молча. R8 классы не переименовывает: в .aar лежит
-      # proguard.txt с "-keep class io.nekohasekai.** { *; }".
-      - name: Проверка что комната olcrtc в APK
-        working-directory: sing-box-for-android
-        run: |
-          APK=$(find app/build/outputs/apk -name '*arm64*.apk' | head -1)
-          test -n "$APK" || { echo "APK не найден"; exit 1; }
-          mkdir -p /tmp/dexcheck && unzip -o -q "$APK" 'classes*.dex' -d /tmp/dexcheck
-          for c in io/nekohasekai/mobile/Mobile io/nekohasekai/mobile/SocketProtector io/nekohasekai/mobile/LogWriter; do
-            grep -qa "$c" /tmp/dexcheck/*.dex || { echo "ОШИБКА: в APK нет класса $c — ядро собрано без olcrtc"; exit 1; }
-            echo "класс в APK: $c"
-          done
-
-      - name: Проверка что Телемост в APK
-        working-directory: sing-box-for-android
-        run: |
-          APK=$(find app/build/outputs/apk -name '*arm64*.apk' | head -1)
-          test -n "$APK" || { echo "APK не найден"; exit 1; }
-          unzip -l "$APK" | grep -q 'lib/arm64-v8a/libopenflux.so' || { echo "ОШИБКА: в APK нет libopenflux.so — релиз без Телемоста"; exit 1; }
-          echo "libopenflux.so в APK: есть"
-
-      - name: Метаданные версии
-        run: |
-          # Номер берём ТОТ ЖЕ, что у APK ($KELEVRA_BUILD из имени тега), а не номер
-          # прогона. Пока здесь стоял github.run_number, релиз kelevra67 выкладывал APK
-          # 1.14.67 и файл версии 1.14.59 — приложение сравнивало себя с чужим номером
-          # и обновление не предлагало вовсе (поймано на живом устройстве 11.08.2026).
-          # ровно та же формула, что versionCode в app/build.gradle.kts
-          VERSION_CODE=$(grep '^VERSION_CODE=' sing-box-for-android/version.properties | cut -d= -f2)
-          CODE=$(( VERSION_CODE * 1000 + KELEVRA_BUILD ))
-          echo "{\"version_code\": $CODE, \"version_name\": \"1.14.$KELEVRA_BUILD\"}" > kelevra-version.json
-          cat kelevra-version.json
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v6
-        with:
-          name: kelevra-apk-release
-          path: |
-            sing-box-for-android/app/build/outputs/apk/**/*arm64*.apk
-            kelevra-version.json
-            sing-box-for-android/dveri.json
-          if-no-files-found: error
-
-      # dveri.json — справочник серверов для входа по коду (docs/PRIGLASHENIE.md в kelevra-server);
-      # сменился адрес сервера — файл в последнем релизе меняется `gh release upload --clobber`, без сборки.
-      # публикуется только пуш тега: ручной запуск — прогон конвейера без релиза
-      - name: Публикация релиза
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v3
-        with:
-          files: |
-            sing-box-for-android/app/build/outputs/apk/**/*arm64*.apk
-            kelevra-version.json
-            sing-box-for-android/dveri.json
-          prerelease: false
-          generate_release_notes: true
+    - name: Checkout app
+      uses: actions/checkout@v5
+      with:
+        path: sing-box-for-android
+        submodules: recursive
+    - name: Setup JDK
+      uses: actions/setup-java@v6
+      with:
+        distribution: temurin
+        java-version: '17'
+    - name: Кеш Gradle
+      uses: actions/cache@v5
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*') }}
+        restore-keys: |
+          gradle-${{ runner.os }}-
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v4
+      with:
+        packages: platform-tools
+    - name: Забрать ядро из job core
+      uses: actions/download-artifact@v7
+      with:
+        pattern: core-libbox*
+        merge-multiple: true
+        path: sing-box-for-android/app/libs
+    - name: Проверка что ядро на месте
+      run: |
+        ls -la sing-box-for-android/app/libs/
+        test -f sing-box-for-android/app/libs/libbox.aar || { echo "ОШИБКА: ядро не собралось"; exit 1; }
+    - name: Подготовка подписи
+      working-directory: sing-box-for-android
+      env:
+        KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+        KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
+        KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+      run: |
+        echo "$KEYSTORE_B64" | base64 -d > app/release.keystore
+        printf 'KEYSTORE_PASS=%s\nALIAS_NAME=%s\nALIAS_PASS=%s\n' "$KEYSTORE_PASS" "$KEY_ALIAS" "$KEYSTORE_PASS" > /tmp/local.properties
+        echo "LOCAL_PROPERTIES=$(base64 -w0 /tmp/local.properties)" >> $GITHUB_ENV
+        rm -f /tmp/local.properties
+        test -s app/release.keystore
+    - name: Номер сборки — из тега, а не из номера прогона
+      env:
+        KELEVRA_BUILD_INPUT: ${{ github.event.inputs.kelevra_build }}
+      run: |
+        set -e
+        # Проверочная сборка без тега ставится поверх установленной версии только с
+        # номером выше её, а номер прогона ниже номеров выпусков. Поэтому при ручном
+        # запуске номер можно задать явно; на выпуск по тегу это не влияет.
+        if [ "$GITHUB_REF_TYPE" != "tag" ] && printf '%s' "$KELEVRA_BUILD_INPUT" | grep -Eq '^[0-9]+$'; then
+          echo "KELEVRA_BUILD=$KELEVRA_BUILD_INPUT" >> "$GITHUB_ENV"
+          echo "номер сборки задан при запуске: $KELEVRA_BUILD_INPUT"
+          exit 0
+        fi
+        # Номер прогона живёт своей жизнью (перезапуски, отменённые сборки, прогоны
+        # других веток), и 10.08.2026 тег kelevra58 выпустил версию 1.14.54: имя тега
+        # и версия разъехались, а телефон с более высоким номером обновление с сервера
+        # уже не принимал. Берём номер из имени тега; без тега остаётся прогон.
+        n="${GITHUB_REF_NAME#v1.14.0-kelevra}"
+        if [ "$GITHUB_REF_TYPE" = "tag" ] && [ "$n" != "$GITHUB_REF_NAME" ] && [ -n "$n" ]; then
+          echo "KELEVRA_BUILD=$n" >> "$GITHUB_ENV"
+          echo "номер сборки из тега: $n"
+        else
+          echo "KELEVRA_BUILD=$GITHUB_RUN_NUMBER" >> "$GITHUB_ENV"
+          echo "тега нет, номер сборки из прогона: $GITHUB_RUN_NUMBER"
+        fi
+    - name: Build APK
+      working-directory: sing-box-for-android
+      run: |
+        chmod +x gradlew
+        ./gradlew assembleOtherRelease --no-daemon
+    - name: Проверка что транспорт в APK
+      working-directory: sing-box-for-android
+      run: |
+        APK=$(find app/build/outputs/apk -name '*arm64*.apk' | head -1)
+        test -n "$APK" || { echo "APK не найден"; exit 1; }
+        mkdir -p /tmp/apkcheck && unzip -o -q "$APK" 'lib/*/libbox.so' -d /tmp/apkcheck
+        SO=$(find /tmp/apkcheck -name libbox.so | head -1)
+        if grep -qa 'v2rayxhttp' "$SO"; then
+          echo "транспорт xhttp внутри APK: есть"
+        else
+          echo "ОШИБКА: в libbox.so нет транспорта xhttp — ядро собрано без патча"
+          exit 1
+        fi
+    - name: Метаданные версии
+      run: |
+        # Номер берём ТОТ ЖЕ, что у APK ($KELEVRA_BUILD из имени тега), а не номер
+        # прогона. Пока здесь стоял github.run_number, релиз kelevra67 выкладывал APK
+        # 1.14.67 и файл версии 1.14.59 — приложение сравнивало себя с чужим номером
+        # и обновление не предлагало вовсе (поймано на живом устройстве 11.08.2026).
+        # ровно та же формула, что versionCode в app/build.gradle.kts
+        VERSION_CODE=$(grep '^VERSION_CODE=' sing-box-for-android/version.properties | cut -d= -f2)
+        CODE=$(( VERSION_CODE * 1000 + KELEVRA_BUILD ))
+        echo "{\"version_code\": $CODE, \"version_name\": \"1.14.$KELEVRA_BUILD\"}" > kelevra-version.json
+        cat kelevra-version.json
+    - name: Upload APK
+      uses: actions/upload-artifact@v6
+      with:
+        name: kelevra-apk-release
+        path: |
+          sing-box-for-android/app/build/outputs/apk/**/*arm64*.apk
+          kelevra-version.json
+          sing-box-for-android/dveri.json
+        if-no-files-found: error
+    - name: Публикация релиза
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v3
+      with:
+        files: |
+          sing-box-for-android/app/build/outputs/apk/**/*arm64*.apk
+          kelevra-version.json
+          sing-box-for-android/dveri.json
+        prerelease: false
+        generate_release_notes: true

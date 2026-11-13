@@ -115,7 +115,7 @@
                 <category android:name="android.intent.category.BROWSABLE" />
 
                 <data
-                    android:host="subkv.chickenkiller.com"
+                    android:host="vpn.195-10-227-82.sslip.io"
                     android:scheme="https" />
 
             </intent-filter>

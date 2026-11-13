@@ -4,7 +4,6 @@ module kelevracores
 go 1.26.3
 
 require (
-	github.com/openlibrecommunity/olcrtc v0.0.0
 	// та же версия, что ставит `make lib_install` в sing-box (gomobile/gobind v0.1.13)
 	github.com/sagernet/gomobile v0.1.13
 	github.com/sagernet/sing-box v0.0.0
@@ -16,4 +15,3 @@ require (
 // workflow всё равно переписывает эти replace абсолютными путями (go mod edit).
 replace github.com/sagernet/sing-box => ../../sing-box
 
-replace github.com/openlibrecommunity/olcrtc => ../../olcrtc

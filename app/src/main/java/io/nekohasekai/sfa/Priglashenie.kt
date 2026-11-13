@@ -9,7 +9,7 @@ import org.json.JSONObject
  * KelevraServer/docs/PRIGLASHENIE.md.
  */
 object Priglashenie {
-    const val SPRAVOCHNIK_URL = "https://github.com/HRYNdev/kelevra-box/releases/latest/download/dveri.json"
+    const val SPRAVOCHNIK_URL = "https://github.com/ostankow/kelevra-box/releases/latest/download/dveri.json"
     const val TEKST_LIMIT = "Достигнут лимит устройств"
     private const val DLINA_KODA = 12
     private val DVER = Regex("^[a-z0-9]([a-z0-9.-]*[a-z0-9])?(:\\d{1,5})?$")

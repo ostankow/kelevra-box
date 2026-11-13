@@ -13,7 +13,7 @@ import org.json.JSONObject
  * случайно осталось в кэше с прошлого раза.
  *
  * Проверено боем на живом телефоне, реальный белый список оператора: комната поднята
- * и живая, браузер ходит, а `https://subkv.chickenkiller.com/rules/...` отдаёт `HTTP 000`
+ * и живая, браузер ходит, а `https://vpn.195-10-227-82.sslip.io/rules/...` отдаёт `HTTP 000`
  * за 10.7 с, и в журнале комнаты этого соединения нет вовсе. Телеграм там же: набор
  * `telegram` не скачался, трафик ушёл `direct` и получил мгновенный отказ от оператора.
  *
@@ -33,7 +33,7 @@ object LifelinePatch {
     private const val TAG = "BoxService"
 
     /** Домены своей инфраструктуры: раздача правил, конфигов и обновлений. */
-    private val OWN_DOMAINS = listOf("chickenkiller.com")
+    private val OWN_DOMAINS = listOf("vpn.195-10-227-82.sslip.io")
 
     /**
      * Официальные подсети Telegram (`t.me/ip_ranges`), IPv4 и IPv6 — все в тот же выход.

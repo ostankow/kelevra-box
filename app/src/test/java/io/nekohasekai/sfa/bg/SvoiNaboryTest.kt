@@ -47,8 +47,8 @@ class SvoiNaboryTest {
                 "rule_set": [
                   ${remote("svoi-tunnel")}, ${remote("svoi-tunnel-2")}, ${remote("svoi-mimo")},
                   ${remote("svoi-blok")}, ${remote("svoi-blok-2")}, ${remote("svoi-razreshit")},
-                  {"tag": "ads", "type": "remote", "format": "binary", "url": "https://subkv.chickenkiller.com/rules/ads.srs", "update_interval": "1h"},
-                  {"tag": "main-domains", "type": "remote", "format": "binary", "url": "https://subkv.chickenkiller.com/rules/main-domains.srs", "update_interval": "1h"}
+                  {"tag": "ads", "type": "remote", "format": "binary", "url": "https://vpn.195-10-227-82.sslip.io/rules/ads.srs", "update_interval": "1h"},
+                  {"tag": "main-domains", "type": "remote", "format": "binary", "url": "https://vpn.195-10-227-82.sslip.io/rules/main-domains.srs", "update_interval": "1h"}
                 ],
                 "final": "direct"
               }
@@ -57,7 +57,7 @@ class SvoiNaboryTest {
         ).toString()
 
     private fun remote(tag: String) =
-        """{"tag": "$tag", "type": "remote", "format": "source", "url": "https://node2kv.chickenkiller.com/u/k/$tag", "update_interval": "2m", "http_client": {"detour": "direct"}}"""
+        """{"tag": "$tag", "type": "remote", "format": "source", "url": "https://vpn.195-10-227-82.sslip.io/u/k/$tag", "update_interval": "2m", "http_client": {"detour": "direct"}}"""
 
     private val mimoBezAction = """{"outbound": "direct", "rule_set": ["svoi-mimo"]}"""
     private val mimoRoute = """{"action": "route", "outbound": "direct", "rule_set": ["svoi-mimo"]}"""
