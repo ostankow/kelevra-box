@@ -1,0 +1,42 @@
+name: Publish verified Android preview
+'on':
+  workflow_dispatch: {}
+permissions:
+  contents: write
+  actions: read
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/setup-java@v6
+      with:
+        distribution: temurin
+        java-version: '17'
+    - uses: android-actions/setup-android@v4
+      with:
+        packages: platform-tools build-tools;36.0.0
+    - name: Verify and publish existing successful build
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: 'set -euo pipefail
+
+        gh run download 43413871723 -R "$GITHUB_REPOSITORY" -n kelevra-apk-release
+        -D artifact
+
+        APK=$(find artifact -name ''*.apk'' | head -1)
+
+        "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs
+        "$APK" | tee verification.txt
+
+        grep -Fq ''Signer #1 certificate SHA-256 digest: 9a601fc67bcc59a78db490d9c0b538d9e5f18adf4f746664ce30f86282a3ae8e''
+        verification.txt
+
+        SOURCE=$(gh api repos/$GITHUB_REPOSITORY/actions/runs/43413871723 --jq .head_sha)
+
+        gh release create v1.14.0-kelevra1001 "$APK" artifact/kelevra-version.json
+        artifact/sing-box-for-android/dveri.json verification.txt --repo "$GITHUB_REPOSITORY"
+        --target "$SOURCE" --prerelease --title ''Kelevra 1.14.1001 — personal preview''
+        --notes ''Own server and signing keys. 1105 unit tests passed; device and
+        mobile-network acceptance pending.''
+
+        '
